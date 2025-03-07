@@ -1,22 +1,43 @@
 // Lambda Function 2: Handles Step 4
-const AWS = require('aws-sdk');
-const DynamoDB = new AWS.DynamoDB.DocumentClient();
-const S3 = new AWS.S3();
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { UpdateItemCommand, ScanCommand } from '@aws-sdk/client-dynamodb';
+import pkg from "@aws-sdk/client-dynamodb";
+const { DynamoDBClient, PutItemCommand } = pkg;
 
-exports.handler = async (event) => {
+const DynamoDB = new DynamoDBClient();
+const S3 = new S3Client();
+
+export const handler = async (event) => {
     const message = JSON.parse(event.Records[0].body);
     const batchId = message.batchId;
 
     try {
-        await updateStatus('processing');
+        console.log('No 1');
+        //Update dynamoDB status
+        const params = {
+            TableName: 'upload_status',
+            Item: {
+                id: { S: '1' },
+                status: { S: 'processing' }
+            }
+        };
+    
+        console.log('Put Item Params:', JSON.stringify(params, null, 2)); // Log the params for debugging
+    
+        await DynamoDB.send(new PutItemCommand(params));
+
+        console.log('No 2');
 
         const users = await getUsersByBatchId(batchId);
+        console.log('No 3');
         for (const user of users) {
             await resizeAvatar(user);
             await createUserLogin(user);
+            console.log('No 4');
         }
 
         await updateStatus('done');
+        console.log('No 5');
 
         return { statusCode: 200, body: 'Success' };
     } catch (err) {
@@ -25,16 +46,19 @@ exports.handler = async (event) => {
     }
 };
 
-async function updateStatus(status) {
-    const params = {
-        TableName: 'upload_status',
-        Key: { id: '1' },
-        UpdateExpression: 'set #status = :status',
-        ExpressionAttributeNames: { '#status': 'status' },
-        ExpressionAttributeValues: { ':status': status }
-    };
-    await DynamoDB.update(params).promise();
-}
+// async function updateStatus(status) {
+//     const params = {
+//         TableName: 'upload_status',
+//         Key: { id: '1' }, // Ensure the key structure matches the table schema
+//         UpdateExpression: 'set #status = :status',
+//         ExpressionAttributeNames: { '#status': 'status' },
+//         ExpressionAttributeValues: { ':status': status } // Ensure the value structure is correct
+//     };
+
+//     console.log('Update Status Params:', JSON.stringify(params, null, 2)); // Log the params for debugging
+
+//     await DynamoDB.send(new PutItemCommand(params));
+// }
 
 async function getUsersByBatchId(batchId) {
     const params = {
@@ -42,19 +66,23 @@ async function getUsersByBatchId(batchId) {
         FilterExpression: 'batchId = :batchId',
         ExpressionAttributeValues: { ':batchId': batchId }
     };
-    const data = await DynamoDB.scan(params).promise();
+    const data = await DynamoDB.send(new ScanCommand(params));
     return data.Items;
 }
 
 async function resizeAvatar(user) {
-    // Placeholder function for resizing avatar
-    const resizedAvatar = user.avatar; // Implement actual resizing logic
-    const params = {
-        Bucket: 'resize-avatar',
-        Key: `${user.id}.jpg`,
-        Body: resizedAvatar
+    const getObjectParams = {
+        Bucket: 'linhclass-upload-csv-user-info-bucket',
+        Key: 'linh.png'
     };
-    await S3.putObject(params).promise();
+    const originalImage = await S3.send(new GetObjectCommand(getObjectParams));
+    
+    const putObjectParams = {
+        Bucket: 'linhclass-s3-resize-image-bucket',
+        Key: `${user.id}.jpg`,
+        Body: originalImage.Body
+    };
+    await S3.send(new PutObjectCommand(putObjectParams));
 }
 
 async function createUserLogin(user) {
@@ -67,5 +95,5 @@ async function createUserLogin(user) {
             ':password': '123'
         }
     };
-    await DynamoDB.update(params).promise();
+    await DynamoDB.send(new UpdateItemCommand(params));
 }
