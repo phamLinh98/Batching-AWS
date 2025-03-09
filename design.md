@@ -47,7 +47,7 @@ Step 3: Lamdba function gửi 1 message vào sqs với thông tin user
     }
     ```
 Step 4: Tạo 1 lambda có tên là RouterLambda dùng để lần lượt gọi các lambda sau :
-    - Update status batch job: Cập nhật status của update_status thành processing. 
-    - Lambda Resize Avatar: Các user có batchId trùng với batchId nhận từ sqs sẽ được resize avatar và lưu vào S3 bucket tên resize avatar
-    - Lambda Create User Login: Các user có batchId trùng với batchId nhận từ sqs sẽ được tạo thêm 2 trường là username: name của user và password: 123 và lưu vào DynamoDB
+    - Update status batch job: Cập nhật status của update_status thành processing. OK
+    - Lambda Resize Avatar: Các user có batchId trùng với batchId nhận từ sqs sẽ được resize avatar và lưu vào S3 bucket tên resize avatar - X
+     - Lambda Create User Login: Các user có batchId trùng với batchId nhận từ sqs sẽ được tạo thêm 2 trường là username: name của user và password: 123 và lưu vào DynamoDB
     - Update status batch job: Cập nhật status của update_status thành done.

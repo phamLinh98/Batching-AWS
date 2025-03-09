@@ -52,7 +52,7 @@ export const handler = async (event) => {
 
     const sqsParams = {
       MessageBody: JSON.stringify({ batchId: "1" }),
-      QueueUrl: "https://sqs.ap-northeast-1.amazonaws.com/650251698778/linhclass-send-message-batch-id-queue"
+      QueueUrl: "https://sqs.ap-northeast-1.amazonaws.com/650251698778/linhclass-call-lambda-update-dynamoDB-queue"
     };
     await SQS.send(new SendMessageCommand(sqsParams));
     console.log("Number 5");

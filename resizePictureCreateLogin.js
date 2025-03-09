@@ -12,8 +12,8 @@ export const handler = async (event) => {
     const batchId = message.batchId;
 
     try {
-        console.log('No 1');
-        //Update dynamoDB status
+        console.log(`No 1 - Batch ID: ${batchId} - message: ${JSON.stringify(message)}`);
+        // Update dynamoDB status
         const params = {
             TableName: 'upload_status',
             Item: {
@@ -26,18 +26,55 @@ export const handler = async (event) => {
     
         await DynamoDB.send(new PutItemCommand(params));
 
-        console.log('No 2');
+        console.log('No 2 - Update DynamoDB status to processing');
 
-        const users = await getUsersByBatchId(batchId);
-        console.log('No 3');
-        for (const user of users) {
-            await resizeAvatar(user);
-            await createUserLogin(user);
-            console.log('No 4');
-        }
+        // Get image key from DynamoDB - Mock image key is 'linh.png'
+        const imageKey = 'linh.png';
 
-        await updateStatus('done');
-        console.log('No 5');
+        // Get image from S3 bucket: linhclass-upload-csv-user-info-bucket
+        const getObjectParams = {
+            Bucket: 'linhclass-upload-csv-user-info-bucket',
+            Key: imageKey
+        };
+        const data = await S3.send(new GetObjectCommand(getObjectParams));
+        const image = await new Promise((resolve, reject) => {
+            const chunks = [];
+            data.Body.on('data', (chunk) => chunks.push(chunk));
+            data.Body.on('end', () => resolve(Buffer.concat(chunks)));
+            data.Body.on('error', reject);
+        });
+
+        console.log('No 3 - Get image from S3 bucket');
+
+        // Call functiuon resizePicture to resize the image
+        const resizedImage = await resizePicture(image);
+
+        console.log('No 4 - Resize image. resizedImage buffer:', resizedImage);
+        console.log('No 4.1 resizedImage base64:', resizedImage.toString('base64'));
+
+        // Save the resized image to S3 bucket: linhclass-resize-image-bucket
+        const putObjectParams = {
+            Bucket: 'linhclass-resize-image-bucket',
+            Key: imageKey,
+            Body: resizedImage
+        };
+        await S3.send(new PutObjectCommand(putObjectParams));
+
+        console.log('No 5 - Save the resized image to S3 bucket');
+
+        // Update dynamoDB status to "completed"
+        const updateParams = {
+            TableName: 'upload_status',
+            Key: {
+                id: { S: '1' }
+            },
+            UpdateExpression: 'set #s = :s',
+            ExpressionAttributeNames: { '#s': 'status' },
+            ExpressionAttributeValues: { ':s': { S: 'completed' } }
+        };
+        await DynamoDB.send(new UpdateItemCommand(updateParams));
+
+        console.log('No 6 - Update DynamoDB status to completed');
 
         return { statusCode: 200, body: 'Success' };
     } catch (err) {
@@ -46,54 +83,7 @@ export const handler = async (event) => {
     }
 };
 
-// async function updateStatus(status) {
-//     const params = {
-//         TableName: 'upload_status',
-//         Key: { id: '1' }, // Ensure the key structure matches the table schema
-//         UpdateExpression: 'set #status = :status',
-//         ExpressionAttributeNames: { '#status': 'status' },
-//         ExpressionAttributeValues: { ':status': status } // Ensure the value structure is correct
-//     };
-
-//     console.log('Update Status Params:', JSON.stringify(params, null, 2)); // Log the params for debugging
-
-//     await DynamoDB.send(new PutItemCommand(params));
-// }
-
-async function getUsersByBatchId(batchId) {
-    const params = {
-        TableName: 'user',
-        FilterExpression: 'batchId = :batchId',
-        ExpressionAttributeValues: { ':batchId': batchId }
-    };
-    const data = await DynamoDB.send(new ScanCommand(params));
-    return data.Items;
-}
-
-async function resizeAvatar(user) {
-    const getObjectParams = {
-        Bucket: 'linhclass-upload-csv-user-info-bucket',
-        Key: 'linh.png'
-    };
-    const originalImage = await S3.send(new GetObjectCommand(getObjectParams));
-    
-    const putObjectParams = {
-        Bucket: 'linhclass-s3-resize-image-bucket',
-        Key: `${user.id}.jpg`,
-        Body: originalImage.Body
-    };
-    await S3.send(new PutObjectCommand(putObjectParams));
-}
-
-async function createUserLogin(user) {
-    const params = {
-        TableName: 'user',
-        Key: { id: user.id },
-        UpdateExpression: 'set username = :username, password = :password',
-        ExpressionAttributeValues: {
-            ':username': user.name,
-            ':password': '123'
-        }
-    };
-    await DynamoDB.send(new UpdateItemCommand(params));
+const resizePicture = async (image) => {
+    // This function is dummy resizePicture function that rerturns the same image
+    return image;
 }
