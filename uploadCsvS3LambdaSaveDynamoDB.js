@@ -12,7 +12,7 @@ const SQS = new SQSClient();
 export const handler = async (event) => {
   const bucket = event.Records[0].s3.bucket.name;
   const key = decodeURIComponent(event.Records[0].s3.object.key.replace(/\+/g, " "));
-  console.log("Number 1");
+  console.log("Number 1",key);
 
   const params = {
     Bucket: bucket,
@@ -23,7 +23,7 @@ export const handler = async (event) => {
     const data = await S3.send(new GetObjectCommand(params));
     const csvData = await streamToString(data.Body);
     const users = parseCSV(csvData);
-    console.log("Number 2");
+    console.log("Number 2",csvData);
 
     for (const user of users) {
       const userParams = {
@@ -37,22 +37,22 @@ export const handler = async (event) => {
         }
       };
       await DynamoDB.send(new PutItemCommand(userParams));
-      console.log("Number 3");
+      console.log("Number 3", users);
     }
 
     const statusParams = {
-      TableName: "upload_status",
+      TableName: "upload-status",
       Item: {
         id: { S: "1" },
         status: { S: "pending" }
       }
     };
     await DynamoDB.send(new PutItemCommand(statusParams));
-    console.log("Number 4");
+    console.log("Number 4",statusParams);
 
     const sqsParams = {
       MessageBody: JSON.stringify({ batchId: "1" }),
-      QueueUrl: "https://sqs.ap-northeast-1.amazonaws.com/650251698778/linhclass-call-lambda-update-dynamoDB-queue"
+      QueueUrl: "https://sqs.ap-northeast-1.amazonaws.com/650251698778/linhclass-upload-image-call-lambda-function-queue"
     };
     await SQS.send(new SendMessageCommand(sqsParams));
     console.log("Number 5");
