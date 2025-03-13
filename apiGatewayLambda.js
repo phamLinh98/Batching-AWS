@@ -39,6 +39,20 @@ export const handler = async (event) => {
                         // Call this userAPI
                         const response = await fetch(userAPI);
                         const data = await response.json();
+                        const response2 = await fetch(resizeAPI, {
+                            method: "PUT",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                        });
+                        const data2 = await response2.json();
+                        const response3 = await fetch(updateUserAPI, {
+                            method: "GET",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                        });
+                        const data3 = await response3.json();
                         body = { message: "GET method called with company from 1.js - data from rootAPI", data };
                         break;
                     case "PUT":

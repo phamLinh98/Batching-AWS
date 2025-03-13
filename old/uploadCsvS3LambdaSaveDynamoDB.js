@@ -52,7 +52,7 @@ export const handler = async (event) => {
 
     const sqsParams = {
       MessageBody: JSON.stringify({ batchId: "1" }),
-      QueueUrl: "https://sqs.ap-northeast-1.amazonaws.com/650251698778/linhclass-upload-image-call-lambda-function-queue"
+      QueueUrl: "https://sqs.ap-northeast-1.amazonaws.com/650251698778/linhclass-new-message-trigger-lambda-route-queue"
     };
     await SQS.send(new SendMessageCommand(sqsParams));
     console.log("Number 5");
